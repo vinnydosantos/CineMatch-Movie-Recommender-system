@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>MLP Prediction</title>
+    <title>MLP Recommendations</title>
     <link rel="stylesheet" href="/static/algorithms.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,60 +16,137 @@
     }
     .logo {
         display: block;
-        margin-top: 10px; /* Adjust the top margin as needed */
+        margin-top: 10px;
         margin-left: 20px;
         margin-right: auto;
-        width: 200px; /* Adjust the width as needed to make the logo small */
+        width: 200px;
+    }
+    #poster img {
+        width: 200px;
+        height: 300px;
+        object-fit: cover;
+        border-radius: 10px;
+        margin: 10px;
+    }
+    .movie-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 10px;
+        max-width: 200px;
+    }
+    .movie-title {
+        color: #7fa4b7;
+        text-align: center;
+        font-size: 14px;
+        margin-top: 10px;
+        word-wrap: break-word;
     }
 </style>
 <body>
     <img src="/static/logo.png" alt="CineMatch Logo" class="logo">
-    <h1 style="font-family: 'Quicksand';font-weight: 600;margin-left: 20px;">  using MLP Approach : </h1>
+    <h1 style="font-family: 'Quicksand';font-weight: 600;margin-left: 20px;">Using MLP Approach:</h1>
     <br>
-    
 
-<div style="display: flex;flex-direction: column;justify-content: space-evenly;margin-left: 20px;">
-    <form action="result4" method="post">
-        <label for="select">🦸🏻‍♀️ Showing recommendations for user: 🦸🏻‍♂️:</label>
-        <br>
-        <input type="text" name="user_id" id = 'movie'>
-        <br>
-        <input type="submit" style="font-family: 'Quicksand';font-weight: 600;" class="submit" id="search" value="Submit" id="submit">
+    <div style="display: flex;flex-direction: column;justify-content: space-evenly;margin-left: 20px;">
+        <form id="mlpForm">
+            <label for="user_id">🦸🏻‍♀️ Showing recommendations for user: 🦸🏻‍♂️</label>
+            <br>
+            <input type="text" name="user_id" id="user_id" placeholder="Enter user ID (1-100)">
+            <br>
+            <input type="submit" style="font-family: 'Quicksand';font-weight: 600;" class="submit" value="Submit">
+        </form>
         
-        {% for message in get_flashed_messages() %}
-             <p id="new">{{ message }}</p>
-         {% endfor %}
-    </form>
-    <div style="display: flow-root;">
-        <h5 style="font-family: 'Quicksand';font-weight: 600; font-size: large;margin-left: 20px;"> 🎬 Movies with high ratings from user : </h5>
-        <div style="display: flex;flex-direction: row;justify-content: space-evenly;">
-            {% for i in range(5) %}
-            <div style="display: flex;flex-direction: column;">
-                <div id="poster">
-                    <img src={{watched_poster_urls[i]}} alt="">
-                </div>
-                <p id="term">{{ watched_movies[i] }}</p>
+        <div id="error-message" style="color: red; margin: 10px 0; display: none;"></div>
+        
+        <div id="watched-movies" style="display: none;">
+            <h5 style="font-family: 'Quicksand';font-weight: 600; font-size: large;margin-left: 20px;">🎬 Movies with high ratings from user:</h5>
+            <div id="watched-container" style="display: flex;flex-direction: row;justify-content: space-evenly;flex-wrap: wrap;">
             </div>
-            {% endfor %}
         </div>
-        
+
+        <div id="recommendations" style="display: none;">
+            <h5 style="font-family: 'Quicksand';font-weight: 600; font-size: large;margin-left: 20px;">🎬 Top 5 Movies recommendations:</h5>
+            <div id="movies-container" style="display: flex;flex-direction: row;justify-content: space-evenly;flex-wrap: wrap;">
+            </div>
+        </div>
     </div>
 
-    <div style="display: flow-root;">
-        <h5 style="font-family: 'Quicksand';font-weight: 600; font-size: large;margin-left: 20px"> 🎬 Top 5 Movies recommendations : </h5>
-        <div style="display: flex;flex-direction: row;justify-content: space-evenly;">
-            {% for i in range(5) %}
-            <div style="display: flex;flex-direction: column;">
-            <div id="poster">
-                <img src={{poster_urls[i]}} alt="">
-            </div>
-            <p id="new">{{ movies[i] }}</p>
-        </div>
-            {% endfor %}
-        </div>
-        
-    </div>
-    
-</div>
+    <script>
+        document.getElementById('mlpForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const userId = document.getElementById('user_id').value;
+            const errorDiv = document.getElementById('error-message');
+            const recommendationsDiv = document.getElementById('recommendations');
+            const watchedDiv = document.getElementById('watched-movies');
+            const moviesContainer = document.getElementById('movies-container');
+            const watchedContainer = document.getElementById('watched-container');
+            
+            if (!userId) {
+                errorDiv.textContent = 'Please enter a user ID';
+                errorDiv.style.display = 'block';
+                recommendationsDiv.style.display = 'none';
+                watchedDiv.style.display = 'none';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/mlp-recommend', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ userId: userId })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    errorDiv.style.display = 'none';
+                    recommendationsDiv.style.display = 'block';
+                    watchedDiv.style.display = 'block';
+                    
+                    // Display recommendations
+                    moviesContainer.innerHTML = '';
+                    data.recommendations.forEach(movie => {
+                        const movieDiv = document.createElement('div');
+                        movieDiv.className = 'movie-container';
+                        movieDiv.innerHTML = `
+                            <div id="poster">
+                                <img src="${movie.poster}" alt="${movie.title}" onerror="this.src='https://via.placeholder.com/200x300?text=No+Image'">
+                            </div>
+                            <p class="movie-title">${movie.title}</p>
+                        `;
+                        moviesContainer.appendChild(movieDiv);
+                    });
+                    
+                    // Display watched movies
+                    watchedContainer.innerHTML = '';
+                    data.watchedMovies.forEach(movie => {
+                        const movieDiv = document.createElement('div');
+                        movieDiv.className = 'movie-container';
+                        movieDiv.innerHTML = `
+                            <div id="poster">
+                                <img src="${movie.poster}" alt="${movie.title}" onerror="this.src='https://via.placeholder.com/200x300?text=No+Image'">
+                            </div>
+                            <p class="movie-title">${movie.title}</p>
+                        `;
+                        watchedContainer.appendChild(movieDiv);
+                    });
+                } else {
+                    errorDiv.textContent = data.error || 'An error occurred';
+                    errorDiv.style.display = 'block';
+                    recommendationsDiv.style.display = 'none';
+                    watchedDiv.style.display = 'none';
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Failed to get recommendations';
+                errorDiv.style.display = 'block';
+                recommendationsDiv.style.display = 'none';
+                watchedDiv.style.display = 'none';
+            }
+        });
+    </script>
 </body>
 </html>
